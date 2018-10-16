@@ -3,8 +3,6 @@ import PropTypes from 'prop-types'
 import Web3 from 'web3'
 import { Loader } from '../components/Common/Loader'
 
-const ONE_SECOND = 1000;
-
 class Web3Provider extends Component {
   constructor(props, context) {
     super(props, context)
@@ -12,10 +10,10 @@ class Web3Provider extends Component {
     this.state = {
       selectedAccount: null,
       web3: null,
+      approvePermissions: null,
       render: false
     }
 
-    this.interval = null
   }
 
   render() {
@@ -23,7 +21,7 @@ class Web3Provider extends Component {
     let renderContainer = false
 
     if (this.state.render) {
-      if (this.state.web3) {
+      if (this.state.web3 && this.state.approvePermissions) {
         renderContainer = this.props.children
       } else {
         renderContainer =  <Web3UnavailableScreen/>
@@ -37,7 +35,6 @@ class Web3Provider extends Component {
 
   componentDidMount() {
     this.checkWeb3()
-    this.initPoll()
 
     // Wait 1 second to render
     setTimeout(function() {
@@ -47,53 +44,46 @@ class Web3Provider extends Component {
 
   checkWeb3() {
     const setWeb3 = () => {
-      window.web3 = new Web3(window.web3.currentProvider)
-      this.setState({
-        web3: window.web3
-      })
-      this.fetchAccounts()
+      try {
+        window.web3 = new Web3(window.web3.currentProvider)
+        this.setState({
+          approvePermissions: true,
+          web3: window.web3
+        })
+        this.fetchAccounts()
+      } catch (err) {
+        console.log('There was a problem fetching accounts', err)
+      }
     }
 
-    window.addEventListener('load', () => {
-      const { ethereum } = window
+    const { ethereum } = window
       // Modern dapp browsers...
-      if (ethereum) {
-        window.web3 = new Web3(ethereum)
-        try {
+    if (ethereum) {
+      window.web3 = new Web3(ethereum)
+      try {
           // Request account access if needed
-          ethereum.enable().then(()=> {
-            if (!this.state.web3) {
-              setWeb3()
-            }
-          })
-        } catch (error) {
+        ethereum.enable().then(()=> {
+          if (!this.state.web3) {
+            setWeb3()
+          }
+        })
+      } catch (error) {
           // User denied account access...
-          console.log('User denied account access')
-        }
+        console.log('User denied account access')
       }
+    }
       // Legacy dapp browsers...
-      else if (window.web3) {
-        setWeb3()
-      }
+    else if (window.web3) {
+      setWeb3()
+    }
       // Non-dapp browsers...
-      else {
-        console.log('Non-Ethereum browser detected. You should consider trying a wallet!')
-      }
-    })
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.interval)
-  }
-
-  initPoll = () => {
-    if (!this.interval) {
-      this.interval = setInterval(this.fetchAccounts, ONE_SECOND)
+    else {
+      console.log('Non-Ethereum browser detected. You should consider trying a wallet!')
     }
   }
 
   fetchAccounts = () => {
-    const { web3  } = this
+    const { web3  } = this.state
     const { onChangeAccount } = this.props
 
     if (!web3 || !web3.eth) {
