@@ -3,7 +3,6 @@ import PropTypes from 'prop-types'
 import Web3 from 'web3'
 import logdown from 'logdown'
 
-const ONE_SECOND = 1000
 const logger = logdown('TW:Web3Provider')
 
 class Web3Provider extends Component {
@@ -13,43 +12,48 @@ class Web3Provider extends Component {
     this.state = {
       selectedAccount: null,
       web3: null,
-      approvePermissions: false,
+      approvePermissions: null,
       render: false
     }
 
     this.web3 = null
-    this.interval = null
   }
 
   render() {
     const { web3UnavailableScreen: Web3UnavailableScreen } = this.props
 
-    if (this.state.web3 && this.state.approvePermissions) {
-      return this.props.children
+    if (this.state.render) {
+      if (this.state.web3 && this.state.approvePermissions) {
+        return this.props.children
+      } else {
+        return <Web3UnavailableScreen />
+      }
     } else {
-      return <Web3UnavailableScreen />
+      return false
     }
   }
 
   componentDidMount() {
     this.checkWeb3()
-    this.initPoll()
 
     // Wait 1 second to render
-    setTimeout(() => {
-      this.setState({ render: true })
-    }, 500)
+    setTimeout(
+      function() {
+        this.setState({ render: true })
+      }.bind(this),
+      1500
+    )
   }
 
   checkWeb3() {
     const setWeb3 = () => {
       try {
         window.web3 = new Web3(window.web3.currentProvider)
-        this.fetchAccounts()
         this.setState({
           approvePermissions: true,
           web3: window.web3
         })
+        this.fetchAccounts()
       } catch (err) {
         logger.log('There was a problem fetching accounts', err)
       }
@@ -78,16 +82,6 @@ class Web3Provider extends Component {
     // Non-dapp browsers...
     else {
       logger.log('Non-Ethereum browser detected. You should consider trying a wallet!')
-    }
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.interval)
-  }
-
-  initPoll = () => {
-    if (!this.interval) {
-      this.interval = setInterval(this.fetchAccounts, ONE_SECOND)
     }
   }
 
